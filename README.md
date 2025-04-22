@@ -2,6 +2,7 @@
 ===================================
 
 Copyright 2010-2025 Google LLC
+*commit*
 
 Mozc is a Japanese Input Method Editor (IME) designed for multi-platform such as
 Android OS, Apple macOS, Chromium OS, GNU/Linux and Microsoft Windows.  This

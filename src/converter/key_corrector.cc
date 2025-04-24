@@ -231,9 +231,16 @@ bool RewriteDE(size_t key_pos, const char *begin, const char *end,
     return false;
   }
 
+  //if (begin + *mblen >= end) {
+  //  *mblen = 0;
+  //  return false;
+  //}
+
   if (begin + *mblen >= end) {
-    *mblen = 0;
-    return false;
+    // 「で」の後に何もないときは「でぃ」に変換して終了
+    Util::CodepointToUtf8Append(0x3067, output);  // "で"
+    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
+    return true;
   }
 
   size_t mblen2 = 0;

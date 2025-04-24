@@ -56,7 +56,7 @@ class OssDataManagerTest : public DataManagerTestBase {
                 {"dictionary00.txt", "dictionary01.txt", "dictionary02.txt",
                  "dictionary03.txt", "dictionary04.txt", "dictionary05.txt",
                  "dictionary06.txt", "dictionary07.txt", "dictionary08.txt",
-                 "dictionary09.txt"}
+                 "dictionary09.txt", "dictionary10.txt"}
 #else  // MOZC_GYP_BUILD
                 {"aux_dictionary.txt", "dictionary.txt"}
 #endif  // MOZC_GYP_BUILD

@@ -240,18 +240,16 @@ bool RewriteDE(size_t key_pos, const char *begin, const char *end,
   const uint16_t next_codepoint =
       Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
   uint16_t output_codepoint = 0x0000;
-  switch (next_codepoint) {
-    case 0x3043:                  // "ぃ"
-      output_codepoint = 0x0000;  // "ぃ"だったら変換しなくていい
-      break;
-    default:
-      output_codepoint = 0x3043;
-      break;
+  if (next_codepoint != 0x3043){ // "ぃ"
+    output_codepoint = 0x3043;
+  } else {
+    output_codepoint = 0x0000;
   }
 
   if (output_codepoint != 0x0000) {
     Util::CodepointToUtf8Append(0x3067, output);  // "で"
-    Util::CodepointToUtf8Append(output_codepoint, output);
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
+    Util::CodepointToUtf8Append(next_codepoint, output);
     *mblen += mblen2;
     return true;
   } else {

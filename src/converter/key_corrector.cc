@@ -221,6 +221,47 @@ bool RewriteNI(size_t key_pos, const char *begin, const char *end,
   return false;
 }
 
+// "で" pattern
+// "で" -> "でぃ"
+bool RewriteNI(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3067) {  // "で"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    *mblen = 0;
+    return false;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  switch (next_codepoint) {
+    case 0x3043:                  // "ぃ"
+      output_codepoint = 0x0000;  // "ぃ"だったら変換しなくていい
+      break;
+    default:
+      output_codepoint = 0x3043;
+      break;
+  }
+
+  if (output_codepoint != 0x0000) {
+    Util::CodepointToUtf8Append(0x3067, output);  // "で"
+    Util::CodepointToUtf8Append(output_codepoint, output);
+    *mblen += mblen2;
+    return true;
+  } else {
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
 // "m" Pattern (not BOS)
 // "m[ばびぶべぼぱぴぷぺぽ]" -> "ん[ばびぶべぼぱぴぷぺぽ]"
 bool RewriteM(size_t key_pos, const char *begin, const char *end, size_t *mblen,

@@ -223,7 +223,7 @@ bool RewriteNI(size_t key_pos, const char *begin, const char *end,
 
 // "で" pattern
 // "で" -> "でぃ"
-bool RewriteNI(size_t key_pos, const char *begin, const char *end,
+bool RewriteDE(size_t key_pos, const char *begin, const char *end,
                size_t *mblen, std::string *output) {
   const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
   if (codepoint != 0x3067) {  // "で"
@@ -454,6 +454,7 @@ bool KeyCorrector::CorrectKey(absl::string_view key, InputMode mode,
          !RewriteYu(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteNI(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteSmallTSU(key_pos, begin, end, &mblen, &corrected_key_) &&
+         !RewriteDE(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteM(key_pos, begin, end, &mblen, &corrected_key_))) {
       const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, &mblen);
       Util::CodepointToUtf8Append(codepoint, &corrected_key_);

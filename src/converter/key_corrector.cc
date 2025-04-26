@@ -236,7 +236,7 @@ bool RewriteDE(size_t key_pos, const char *begin, const char *end,
     // 「で」の後に何もないときは「でぃ」に変換して終了
     Util::CodepointToUtf8Append(codepoint, output);  // "で"
     Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
-    *mblen += Util::Utf8Len(0x3043);
+    *mblen += 3;
     return true;
   }
 
@@ -254,7 +254,7 @@ bool RewriteDE(size_t key_pos, const char *begin, const char *end,
     Util::CodepointToUtf8Append(codepoint, output); // "で"
     Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
     Util::CodepointToUtf8Append(next_codepoint, output);  // "で"の直後にあった文字
-    *mblen += mblen2 + Util::Utf8Len(0x3043);
+    *mblen += mblen2 + 3;
     return true;
   } else {  // others
     *mblen = 0;

@@ -391,6 +391,50 @@ bool RewriteSmallTSU(size_t key_pos, const char *begin, const char *end,
   return true;
 }
 
+// "＠の＠" pattern
+// "＠の＠" -> "の"
+bool RewriteParticleNO(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+  const char32_t first_char = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (first_char != 0xFF20 && first_char != 0x40) {  // !"＠@"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    *mblen = 0;
+    return false;
+  }
+
+  size_t mblen2 = 0;
+  const char32_t next_char =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  if (next_char != 0x306E) {  // "の"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen + mblen2 >= end) {
+    *mblen = 0;
+    return false;
+  }
+
+  size_t mblen3 = 0;
+  const char32_t last_char =
+      Util::Utf8ToCodepoint(begin + *mblen + mblen2, end, &mblen3);
+  if (last_char != 0xFF20 && last_char != 0x40) {  // !"＠@"
+    *mblen = 0;
+    return false;
+  }
+
+  // OK, rewrite
+  *mblen += mblen2 + mblen3;
+  Util::CodepointToUtf8Append(next_char, output);  // "の"
+
+  return true;
+}
+
+
 // Not implemented yet, as they looks minor
 // "[子音][ゃゅょ][^う]" Pattern
 // "きゅ[^う] -> きゅう"

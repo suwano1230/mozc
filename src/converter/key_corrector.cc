@@ -44,13 +44,11 @@
 namespace mozc {
 namespace {
 
-// "ああ" pattern
-// "ああ" -> "あー"
-bool RewriteAA(size_t key_pos, const char *begin, const char *end,
-               size_t *mblen, std::string *output) {
+bool RewriteToLongVowel(char32_t target, const char *begin, const char *end,
+                        size_t *mblen, std::string *output) {
   
   const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
-  if (codepoint != 0x3042) {  // "あ"
+  if (codepoint != target) {  // "１文字目"
     *mblen = 0;
     return false;
   }
@@ -64,7 +62,7 @@ bool RewriteAA(size_t key_pos, const char *begin, const char *end,
   const uint16_t next_codepoint =
       Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
   uint16_t output_codepoint = 0x0000;
-  if (next_codepoint != 0x3042){ // "あ"
+  if (next_codepoint == 0x3042){ // "あ"
     output_codepoint = 0x30FC; // "ー"
   } else {
     output_codepoint = 0x0000;
@@ -83,43 +81,18 @@ bool RewriteAA(size_t key_pos, const char *begin, const char *end,
   return false;
 }
 
+// "ああ" pattern
+// "ああ" -> "あー"
+bool RewriteAA(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+  return RewriteToLongVowel(0x3042, begin, end, mblen, output);  // 'あ'
+}
+
 // "かあ" pattern
 // "かあ" -> "かー"
 bool RewriteKAA(size_t key_pos, const char *begin, const char *end,
                size_t *mblen, std::string *output) {
-  
-  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
-  if (codepoint != 0x304B) {  // "か"
-    *mblen = 0;
-    return false;
-  }
-
-  if (begin + *mblen >= end) {
-    *mblen = 0;
-    return false;
-  }
-
-  size_t mblen2 = 0;
-  const uint16_t next_codepoint =
-      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
-  uint16_t output_codepoint = 0x0000;
-  if (next_codepoint != 0x3042){ // "あ"
-    output_codepoint = 0x30FC; // "ー"
-  } else {
-    output_codepoint = 0x0000;
-  }
-
-  if (output_codepoint != 0x0000) {  // "かー"
-    Util::CodepointToUtf8Append(codepoint, output);
-    Util::CodepointToUtf8Append(output_codepoint, output);
-    *mblen += mblen2;
-    return true;
-  } else {  // others
-    *mblen = 0;
-    return false;
-  }
-
-  return false;
+  return RewriteToLongVowel(0x304B, begin, end, mblen, output);  // 'か'
 }
 
 

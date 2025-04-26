@@ -316,6 +316,84 @@ bool RewriteDE(size_t key_pos, const char *begin, const char *end,
   return false;
 }
 
+// "でい" pattern 1
+// "でい" -> "でぃ"
+bool RewriteDEI1(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3067) {  // "で"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    *mblen = 0;
+    return false;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint == 0x3044){ // "い"
+    output_codepoint = 0x3043;  // "ぃ"
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {  // "でぃ"
+    Util::CodepointToUtf8Append(codepoint, output); // "で"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
+    *mblen += mblen2;
+    return true;
+  } else {  // others
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
+// "でい" pattern 2
+// "でい" -> "でぃー"
+bool RewriteDEI2(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3067) {  // "で"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    *mblen = 0;
+    return false;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint == 0x3044){ // "い"
+    output_codepoint = 0x30FC;  // "ー"
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {
+    Util::CodepointToUtf8Append(0x3067, output);  // "で"
+    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ー"
+    *mblen += mblen2;
+    return true;
+  } else {
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
 // "へ" pattern
 // "へ" -> "ふぇ"
 bool RewriteHE(size_t key_pos, const char *begin, const char *end,
@@ -600,6 +678,8 @@ bool KeyCorrector::CorrectKey(absl::string_view key, InputMode mode,
          !RewriteSmallTSU(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteDE(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteHE(key_pos, begin, end, &mblen, &corrected_key_) &&
+         !RewriteDE1(key_pos, begin, end, &mblen, &corrected_key_) &&
+         !RewriteDE2(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteParticleNO(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteM(key_pos, begin, end, &mblen, &corrected_key_))) {
       const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, &mblen);

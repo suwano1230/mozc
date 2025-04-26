@@ -252,8 +252,50 @@ bool RewriteDE(size_t key_pos, const char *begin, const char *end,
   if (output_codepoint != 0x0000) {  // "で[^ぃ]"
     Util::CodepointToUtf8Append(codepoint, output); // "で"
     Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
-    //Util::CodepointToUtf8Append(next_codepoint, output);  // "で"の直後にあった文字
-    //*mblen += mblen2;
+    return true;
+  } else {  // others
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
+// "へ" pattern
+// "へ" -> "ふぇ"
+bool RewriteHE(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3078) {  // "へ"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    // 「へ」の後に何もないときは「ふぇ」に変換して終了
+    Util::CodepointToUtf8Append(0x3075, output);  // "ふ"
+    Util::CodepointToUtf8Append(0x3047, output);  // "ぇ"
+    return true;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint != 0x3041 && next_codepoint != 0x3043 &&
+      next_codepoint != 0x3045 && next_codepoint != 0x3047 &&
+      next_codepoint != 0x3049 && next_codepoint != 0x3083 &&
+      next_codepoint != 0x3085 && next_codepoint != 0x3087 &&
+      next_codepoint != 0x308E){ // "[^ぁぃぅぇぉゃゅょゎ]"
+    output_codepoint = 0x3047;
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {  // "へ[^ぁぃぅぇぉゃゅょゎ]"
+    Util::CodepointToUtf8Append(0x3075, output); // "ふ"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぇ"
     return true;
   } else {  // others
     *mblen = 0;
@@ -456,6 +498,7 @@ bool KeyCorrector::CorrectKey(absl::string_view key, InputMode mode,
          !RewriteNI(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteSmallTSU(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteDE(key_pos, begin, end, &mblen, &corrected_key_) &&
+         !RewriteHE(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteM(key_pos, begin, end, &mblen, &corrected_key_))) {
       const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, &mblen);
       Util::CodepointToUtf8Append(codepoint, &corrected_key_);

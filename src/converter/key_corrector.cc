@@ -285,7 +285,7 @@ bool RewriteDE(size_t key_pos, const char *begin, const char *end,
   for (const char *p = begin; p < end; ) {
     size_t tmp_mblen = 0;
     const char32_t c = Util::Utf8ToCodepoint(p, end, &tmp_mblen);
-    if (c == 0xFF20) {  // "＠"
+    if (c == 0xFF20 || c == 0x40) {  // "＠ or @"
       // もし「＠」があったら、この関数は変換しない
       *mblen = 0;
       return false;

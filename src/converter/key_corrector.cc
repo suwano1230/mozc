@@ -281,6 +281,18 @@ bool RewriteNI(size_t key_pos, const char *begin, const char *end,
 bool RewriteDE(size_t key_pos, const char *begin, const char *end,
                size_t *mblen, std::string *output) {
 
+  // まず最初に、begin～endの範囲に「＠」（0xFF20）が含まれているかチェック
+  for (const char *p = begin; p < end; ) {
+    size_t tmp_mblen = 0;
+    const char32_t c = Util::Utf8ToCodepoint(p, end, &tmp_mblen);
+    if (c == 0xFF20) {  // "＠"
+      // もし「＠」があったら、この関数は変換しない
+      *mblen = 0;
+      return false;
+    }
+    p += tmp_mblen;  // 次の文字へ進む
+  }
+
   const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
   if (codepoint != 0x3067) {  // "で"
     *mblen = 0;
@@ -678,8 +690,8 @@ bool KeyCorrector::CorrectKey(absl::string_view key, InputMode mode,
          !RewriteSmallTSU(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteDE(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteHE(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteDE1(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteDE2(key_pos, begin, end, &mblen, &corrected_key_) &&
+         !RewriteDEI1(key_pos, begin, end, &mblen, &corrected_key_) &&
+         !RewriteDEI2(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteParticleNO(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteM(key_pos, begin, end, &mblen, &corrected_key_))) {
       const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, &mblen);

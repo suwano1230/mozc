@@ -43,7 +43,7 @@
 
 namespace mozc {
 namespace {
-
+/*
 bool RewriteToLongVowel(char32_t target, const char *begin, const char *end,
                         size_t *mblen, std::string *output) {
   
@@ -95,9 +95,180 @@ bool RewriteKAA(size_t key_pos, const char *begin, const char *end,
   return RewriteToLongVowel(0x304B, begin, end, mblen, output);  // 'か'
 }
 
+// "で" pattern
+// "で" -> "でぃ"
+bool RewriteDE(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
 
+  // まず最初に、begin～endの範囲に「＠」（0xFF20）が含まれているかチェック
+  for (const char *p = begin; p < end; ) {
+    size_t tmp_mblen = 0;
+    const char32_t c = Util::Utf8ToCodepoint(p, end, &tmp_mblen);
+    if (c == 0xFF20 || c == 0x40) {  // "＠ or @"
+      // もし「＠」があったら、この関数は変換しない
+      *mblen = 0;
+      return false;
+    }
+    p += tmp_mblen;  // 次の文字へ進む
+  }
 
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3067) {  // "で"
+    *mblen = 0;
+    return false;
+  }
 
+  if (begin + *mblen >= end) {
+    // 「で」の後に何もないときは「でぃ」に変換して終了
+    Util::CodepointToUtf8Append(codepoint, output);  // "で"
+    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
+    return true;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint != 0x3043){ // "ぃ"
+    output_codepoint = 0x3043;
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {  // "で[^ぃ]"
+    Util::CodepointToUtf8Append(codepoint, output); // "で"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
+    return true;
+  } else {  // others
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
+// "でい" pattern 1
+// "でい" -> "でぃ"
+bool RewriteDEI1(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3067) {  // "で"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    *mblen = 0;
+    return false;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint == 0x3044){ // "い"
+    output_codepoint = 0x3043;  // "ぃ"
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {  // "でぃ"
+    Util::CodepointToUtf8Append(codepoint, output); // "で"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
+    *mblen += mblen2;
+    return true;
+  } else {  // others
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
+// "でい" pattern 2
+// "でい" -> "でぃー"
+bool RewriteDEI2(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3067) {  // "で"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    *mblen = 0;
+    return false;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint == 0x3044){ // "い"
+    output_codepoint = 0x30FC;  // "ー"
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {
+    Util::CodepointToUtf8Append(0x3067, output);  // "で"
+    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ー"
+    *mblen += mblen2;
+    return true;
+  } else {
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
+// "へ" pattern
+// "へ" -> "ふぇ"
+bool RewriteHE(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3078) {  // "へ"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    // 「へ」の後に何もないときは「ふぇ」に変換して終了
+    Util::CodepointToUtf8Append(0x3075, output);  // "ふ"
+    Util::CodepointToUtf8Append(0x3047, output);  // "ぇ"
+    return true;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint != 0x3041 && next_codepoint != 0x3043 &&
+      next_codepoint != 0x3045 && next_codepoint != 0x3047 &&
+      next_codepoint != 0x3049 && next_codepoint != 0x3083 &&
+      next_codepoint != 0x3085 && next_codepoint != 0x3087 &&
+      next_codepoint != 0x308E){ // "[^ぁぃぅぇぉゃゅょゎ]"
+    output_codepoint = 0x3047;
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {  // "へ[^ぁぃぅぇぉゃゅょゎ]"
+    Util::CodepointToUtf8Append(0x3075, output); // "ふ"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぇ"
+    return true;
+  } else {  // others
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+*/
 
 // "ん" (few "n" pattern)
 // "んあ" -> "んな"
@@ -276,180 +447,6 @@ bool RewriteNI(size_t key_pos, const char *begin, const char *end,
   return false;
 }
 
-// "で" pattern
-// "で" -> "でぃ"
-bool RewriteDE(size_t key_pos, const char *begin, const char *end,
-               size_t *mblen, std::string *output) {
-
-  // まず最初に、begin～endの範囲に「＠」（0xFF20）が含まれているかチェック
-  for (const char *p = begin; p < end; ) {
-    size_t tmp_mblen = 0;
-    const char32_t c = Util::Utf8ToCodepoint(p, end, &tmp_mblen);
-    if (c == 0xFF20 || c == 0x40) {  // "＠ or @"
-      // もし「＠」があったら、この関数は変換しない
-      *mblen = 0;
-      return false;
-    }
-    p += tmp_mblen;  // 次の文字へ進む
-  }
-
-  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
-  if (codepoint != 0x3067) {  // "で"
-    *mblen = 0;
-    return false;
-  }
-
-  if (begin + *mblen >= end) {
-    // 「で」の後に何もないときは「でぃ」に変換して終了
-    Util::CodepointToUtf8Append(codepoint, output);  // "で"
-    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
-    return true;
-  }
-
-  size_t mblen2 = 0;
-  const uint16_t next_codepoint =
-      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
-  uint16_t output_codepoint = 0x0000;
-  if (next_codepoint != 0x3043){ // "ぃ"
-    output_codepoint = 0x3043;
-  } else {
-    output_codepoint = 0x0000;
-  }
-
-  if (output_codepoint != 0x0000) {  // "で[^ぃ]"
-    Util::CodepointToUtf8Append(codepoint, output); // "で"
-    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
-    return true;
-  } else {  // others
-    *mblen = 0;
-    return false;
-  }
-
-  return false;
-}
-
-// "でい" pattern 1
-// "でい" -> "でぃ"
-bool RewriteDEI1(size_t key_pos, const char *begin, const char *end,
-               size_t *mblen, std::string *output) {
-
-  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
-  if (codepoint != 0x3067) {  // "で"
-    *mblen = 0;
-    return false;
-  }
-
-  if (begin + *mblen >= end) {
-    *mblen = 0;
-    return false;
-  }
-
-  size_t mblen2 = 0;
-  const uint16_t next_codepoint =
-      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
-  uint16_t output_codepoint = 0x0000;
-  if (next_codepoint == 0x3044){ // "い"
-    output_codepoint = 0x3043;  // "ぃ"
-  } else {
-    output_codepoint = 0x0000;
-  }
-
-  if (output_codepoint != 0x0000) {  // "でぃ"
-    Util::CodepointToUtf8Append(codepoint, output); // "で"
-    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
-    *mblen += mblen2;
-    return true;
-  } else {  // others
-    *mblen = 0;
-    return false;
-  }
-
-  return false;
-}
-
-// "でい" pattern 2
-// "でい" -> "でぃー"
-bool RewriteDEI2(size_t key_pos, const char *begin, const char *end,
-               size_t *mblen, std::string *output) {
-  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
-  if (codepoint != 0x3067) {  // "で"
-    *mblen = 0;
-    return false;
-  }
-
-  if (begin + *mblen >= end) {
-    *mblen = 0;
-    return false;
-  }
-
-  size_t mblen2 = 0;
-  const uint16_t next_codepoint =
-      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
-  uint16_t output_codepoint = 0x0000;
-  if (next_codepoint == 0x3044){ // "い"
-    output_codepoint = 0x30FC;  // "ー"
-  } else {
-    output_codepoint = 0x0000;
-  }
-
-  if (output_codepoint != 0x0000) {
-    Util::CodepointToUtf8Append(0x3067, output);  // "で"
-    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
-    Util::CodepointToUtf8Append(output_codepoint, output);  // "ー"
-    *mblen += mblen2;
-    return true;
-  } else {
-    *mblen = 0;
-    return false;
-  }
-
-  return false;
-}
-
-// "へ" pattern
-// "へ" -> "ふぇ"
-bool RewriteHE(size_t key_pos, const char *begin, const char *end,
-               size_t *mblen, std::string *output) {
-
-  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
-  if (codepoint != 0x3078) {  // "へ"
-    *mblen = 0;
-    return false;
-  }
-
-  if (begin + *mblen >= end) {
-    // 「へ」の後に何もないときは「ふぇ」に変換して終了
-    Util::CodepointToUtf8Append(0x3075, output);  // "ふ"
-    Util::CodepointToUtf8Append(0x3047, output);  // "ぇ"
-    return true;
-  }
-
-  size_t mblen2 = 0;
-  const uint16_t next_codepoint =
-      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
-  uint16_t output_codepoint = 0x0000;
-  if (next_codepoint != 0x3041 && next_codepoint != 0x3043 &&
-      next_codepoint != 0x3045 && next_codepoint != 0x3047 &&
-      next_codepoint != 0x3049 && next_codepoint != 0x3083 &&
-      next_codepoint != 0x3085 && next_codepoint != 0x3087 &&
-      next_codepoint != 0x308E){ // "[^ぁぃぅぇぉゃゅょゎ]"
-    output_codepoint = 0x3047;
-  } else {
-    output_codepoint = 0x0000;
-  }
-
-  if (output_codepoint != 0x0000) {  // "へ[^ぁぃぅぇぉゃゅょゎ]"
-    Util::CodepointToUtf8Append(0x3075, output); // "ふ"
-    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぇ"
-    return true;
-  } else {  // others
-    *mblen = 0;
-    return false;
-  }
-
-  return false;
-}
-
 // "m" Pattern (not BOS)
 // "m[ばびぶべぼぱぴぷぺぽ]" -> "ん[ばびぶべぼぱぴぷぺぽ]"
 bool RewriteM(size_t key_pos, const char *begin, const char *end, size_t *mblen,
@@ -579,7 +576,6 @@ bool RewriteParticleNO(size_t key_pos, const char *begin, const char *end,
   return true;
 }
 
-
 // Not implemented yet, as they looks minor
 // "[子音][ゃゅょ][^う]" Pattern
 // "きゅ[^う] -> きゅう"
@@ -682,16 +678,10 @@ bool KeyCorrector::CorrectKey(absl::string_view key, InputMode mode,
     const size_t org_len = corrected_key_.size();
     if (begin < input_begin ||
         (!RewriteDoubleNN(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteAA(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteKAA(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteNN(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteYu(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteNI(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteSmallTSU(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteDE(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteHE(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteDEI1(key_pos, begin, end, &mblen, &corrected_key_) &&
-         !RewriteDEI2(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteParticleNO(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteM(key_pos, begin, end, &mblen, &corrected_key_))) {
       const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, &mblen);

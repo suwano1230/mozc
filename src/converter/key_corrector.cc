@@ -95,58 +95,6 @@ bool RewriteKAA(size_t key_pos, const char *begin, const char *end,
   return RewriteToLongVowel(0x304B, begin, end, mblen, output);  // 'か'
 }
 
-// "で" pattern
-// "で" -> "でぃ"
-bool RewriteDE(size_t key_pos, const char *begin, const char *end,
-               size_t *mblen, std::string *output) {
-
-  // まず最初に、begin～endの範囲に「＠」（0xFF20）が含まれているかチェック
-  for (const char *p = begin; p < end; ) {
-    size_t tmp_mblen = 0;
-    const char32_t c = Util::Utf8ToCodepoint(p, end, &tmp_mblen);
-    if (c == 0xFF20 || c == 0x40) {  // "＠ or @"
-      // もし「＠」があったら、この関数は変換しない
-      *mblen = 0;
-      return false;
-    }
-    p += tmp_mblen;  // 次の文字へ進む
-  }
-
-  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
-  if (codepoint != 0x3067) {  // "で"
-    *mblen = 0;
-    return false;
-  }
-
-  if (begin + *mblen >= end) {
-    // 「で」の後に何もないときは「でぃ」に変換して終了
-    Util::CodepointToUtf8Append(codepoint, output);  // "で"
-    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
-    return true;
-  }
-
-  size_t mblen2 = 0;
-  const uint16_t next_codepoint =
-      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
-  uint16_t output_codepoint = 0x0000;
-  if (next_codepoint != 0x3043){ // "ぃ"
-    output_codepoint = 0x3043;
-  } else {
-    output_codepoint = 0x0000;
-  }
-
-  if (output_codepoint != 0x0000) {  // "で[^ぃ]"
-    Util::CodepointToUtf8Append(codepoint, output); // "で"
-    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
-    return true;
-  } else {  // others
-    *mblen = 0;
-    return false;
-  }
-
-  return false;
-}
-
 // "でい" pattern 1
 // "でい" -> "でぃ"
 bool RewriteDEI1(size_t key_pos, const char *begin, const char *end,
@@ -628,6 +576,61 @@ bool RewriteYu(size_t key_pos, const char *begin, const char *end,
 
   return true;
 }
+
+// "で" pattern
+// "で" -> "でぃ"
+bool RewriteDE(size_t key_pos, const char *begin, const char *end,
+               size_t *mblen, std::string *output) {
+
+  // まず最初に、begin～endの範囲に「＠」（0xFF20）が含まれているかチェック
+  for (const char *p = begin; p < end; ) {
+    size_t tmp_mblen = 0;
+    const char32_t c = Util::Utf8ToCodepoint(p, end, &tmp_mblen);
+    if (c == 0xFF20 || c == 0x40) {  // "＠ or @"
+      // もし「＠」があったら、この関数は変換しない
+      *mblen = 0;
+      return false;
+    }
+    p += tmp_mblen;  // 次の文字へ進む
+  }
+
+  const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, mblen);
+  if (codepoint != 0x3067) {  // "で"
+    *mblen = 0;
+    return false;
+  }
+
+  if (begin + *mblen >= end) {
+    // 「で」の後に何もないときは「でぃ」に変換して終了
+    Util::CodepointToUtf8Append(codepoint, output);  // "で"
+    Util::CodepointToUtf8Append(0x3043, output);  // "ぃ"
+    *mblen = 0;  // この部分は本来不要。テスト
+    return true;
+  }
+
+  size_t mblen2 = 0;
+  const uint16_t next_codepoint =
+      Util::Utf8ToCodepoint(begin + *mblen, end, &mblen2);
+  uint16_t output_codepoint = 0x0000;
+  if (next_codepoint != 0x3043){ // "ぃ"
+    output_codepoint = 0x3043;
+  } else {
+    output_codepoint = 0x0000;
+  }
+
+  if (output_codepoint != 0x0000) {  // "で[^ぃ]"
+    Util::CodepointToUtf8Append(codepoint, output); // "で"
+    Util::CodepointToUtf8Append(output_codepoint, output);  // "ぃ"
+    *mblen = 0;  // この部分は本来不要。テスト
+    return true;
+  } else {  // others
+    *mblen = 0;
+    return false;
+  }
+
+  return false;
+}
+
 }  // namespace
 
 size_t KeyCorrector::GetCorrectedPosition(const size_t original_key_pos) const {
@@ -683,6 +686,7 @@ bool KeyCorrector::CorrectKey(absl::string_view key, InputMode mode,
          !RewriteNI(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteSmallTSU(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteParticleNO(key_pos, begin, end, &mblen, &corrected_key_) &&
+         !RewriteDE(key_pos, begin, end, &mblen, &corrected_key_) &&
          !RewriteM(key_pos, begin, end, &mblen, &corrected_key_))) {
       const char32_t codepoint = Util::Utf8ToCodepoint(begin, end, &mblen);
       Util::CodepointToUtf8Append(codepoint, &corrected_key_);
